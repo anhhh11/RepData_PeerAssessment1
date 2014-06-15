@@ -92,7 +92,8 @@ data <- na.omit(data) #Ommited missing value
 ```r
 obsGroupByPerDay = orgData[,list(total_steps=sum(steps)),by=date] #NEED: V1 column name -> MeanOfSteps
 p <- ggplot(data=obsGroupByPerDay) + geom_histogram(aes(x=total_steps,fill=..count..)) +
-  xlab("Steps")
+  xlab("Steps") +
+  ggtitle("Total number of steps taken each day")
 print(p)
 ```
 
@@ -100,7 +101,7 @@ print(p)
 ## stat_bin: binwidth defaulted to range/30. Use 'binwidth = x' to adjust this.
 ```
 
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4.png) 
+![plot of chunk histTotalStepsByDay](figure/histTotalStepsByDay.png) 
 
 ### The mean total number of steps taken per day
 
@@ -245,10 +246,13 @@ medianStepsPerDay
 
 ```r
 meanStepByInterval = data[,mean(steps),by=interval]
-ggplot(data=meanStepByInterval) + geom_line(aes(x=interval,y=V1)) + ylab("mean of steps")
+ggplot(data=meanStepByInterval) + 
+  geom_line(aes(x=interval,y=V1)) + 
+  ylab("mean of steps") +
+  ggtitle("Average number of steps taken of 5-minute intervals")
 ```
 
-![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7.png) 
+![plot of chunk avgDailyActPattern](figure/avgDailyActPattern.png) 
 
 ### 5-minute interval contains the maximum number of steps
 
@@ -371,6 +375,7 @@ grid.arrange(before,after)
 ```
 
 ![plot of chunk compareBetweenBeforeAndAfterFilling](figure/compareBetweenBeforeAndAfterFilling.png) 
+
 *Don't see much difference here*
 
 ## Are there differences in activity patterns between weekdays and weekends?
@@ -388,8 +393,10 @@ ggplot(data=filledDataSumStepByDayTypesAndInterval) +
   geom_line(aes(x=interval,y=sum)) +
   facet_grid(dayTypes ~ . ) +
   theme(strip.text.y = element_text(size = 20)) +
-  ylab("Number of steps")
+  ylab("Number of steps") +
+  ggtitle("Number of steps for each interval split by weekends and weekdays")
 ```
 
-![plot of chunk unnamed-chunk-13](figure/unnamed-chunk-13.png) 
+![plot of chunk makePanelIntervalByDayTypes](figure/makePanelIntervalByDayTypes.png) 
+
 *Yes much difference, seem lazier at weekends*

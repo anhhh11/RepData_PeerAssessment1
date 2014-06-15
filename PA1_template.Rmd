@@ -1,7 +1,7 @@
 # Reproducible Research: Peer Assessment 1
 
 ## Loading library
-```{r}
+```{r,loadingLibrary}
 library(data.table)
 library(fasttime)
 library(ggplot2)
@@ -9,12 +9,12 @@ library(gridExtra)
 ```
 
 ## Getting data
-```{r}
+```{r,gettingData}
 if (!file.exists('activity.csv')) unzip("activity.zip")
 ```
 
 ## Loading and preprocessing the data
-```{r}
+```{r,loadingAndPreprocessingData}
 testData <- fread("activity.csv",nrows=1000)
 summary(testData)
 head(testData)
@@ -31,34 +31,38 @@ data <- na.omit(data) #Ommited missing value
 
 ## What is mean total number of steps taken per day?
 ### A histogram of the total number of steps taken each day
-```{r}
+```{r, histTotalStepsByDay}
 obsGroupByPerDay = orgData[,list(total_steps=sum(steps)),by=date] #NEED: V1 column name -> MeanOfSteps
 p <- ggplot(data=obsGroupByPerDay) + geom_histogram(aes(x=total_steps,fill=..count..)) +
-  xlab("Steps")
+  xlab("Steps") +
+  ggtitle("Total number of steps taken each day")
 print(p)
 ```
 
 ### The mean total number of steps taken per day
-```{r}
+```{r, meanTotalStepsByBy}
 meanStepsPerDay = orgData[,mean(steps),by=date]
 meanStepsPerDay
 ```
 
 ### The median total number of steps taken per day
-```{r}
+```{r, medTotalStepsByDay}
 medianStepsPerDay = data[,median(steps,na.rm=T),by=date]
 medianStepsPerDay
 ```
 
 ## What is the average daily activity pattern?
 ### A time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
-```{r}
+```{r, avgDailyActPattern}
 meanStepByInterval = data[,mean(steps),by=interval]
-ggplot(data=meanStepByInterval) + geom_line(aes(x=interval,y=V1)) + ylab("mean of steps")
+ggplot(data=meanStepByInterval) + 
+  geom_line(aes(x=interval,y=V1)) + 
+  ylab("mean of steps") +
+  ggtitle("Average number of steps taken of 5-minute intervals")
 ```
 
 ### 5-minute interval contains the maximum number of steps
-```{r}
+```{r, maxStepsOfInterval}
 meanStepByInterval$interval[which.max(meanStepByInterval$V1)]
 835/60 # At 2pm
 ```
@@ -77,7 +81,7 @@ summary(orgData) # 2304
 ### Filling in all of the missing values in the dataset
 #### Filling missing intervals in a day
 *Strategy: Use steps' mean of a day to fill missing values of step that day*
-```{r}
+```{r, fillMissingIntervalInDay}
 fillMissingIntervalInADayData = orgData
 naPostition = which(is.na(fillMissingIntervalInADayData$steps))
 naFilled = merge(fillMissingIntervalInADayData[naPostition,list(date)],medianStepsPerDay,by="date",all.x=TRUE) #Merge with median per day
@@ -87,7 +91,7 @@ summary(fillMissingIntervalInADayData) # 2304
 
 #### Filling a day which have missing intervals
 *Strategy: Use mean of steps group by intervals to fill missing values of steps belong to the intervals*
-```{r}
+```{r,fillingDayMissingIntervals}
 #Duplicate data
 fillADayMissingInvervals = fillMissingIntervalInADayData
 #Find NA row position
@@ -99,7 +103,7 @@ fillADayMissingInvervals$steps[naPostition] = naFilledValues$V1
 summary(fillADayMissingInvervals)
 ```
 ### A new dataset that is equal to the original dataset but with the missing data filled in.
-```{r}
+```{r, newFilledDataset}
 filledData = fillADayMissingInvervals
 ```
 
@@ -119,19 +123,20 @@ grid.arrange(before,after)
 
 ## Are there differences in activity patterns between weekdays and weekends?
 1. Create dayTypes variable indicate day as weekends or weekdays
-```{r}
+```{r, addDayTypes}
 filledData$dayTypes = as.factor(filledData[,grepl("Sunday|Staturday",weekdays(date))])
 levels(filledData$dayTypes) <- c("weekdays","weekends")
 
 ```
 2. Make panel plot show number of steps for each interval split by dayTypes
-```{r}
+```{r, makePanelIntervalByDayTypes}
 filledDataSumStepByDayTypesAndInterval = filledData[,list(sum=sum(steps)),by=list(dayTypes,interval)]
 ggplot(data=filledDataSumStepByDayTypesAndInterval) +
   geom_line(aes(x=interval,y=sum)) +
   facet_grid(dayTypes ~ . ) +
   theme(strip.text.y = element_text(size = 20)) +
-  ylab("Number of steps")
+  ylab("Number of steps") +
+  ggtitle("Number of steps for each interval split by weekends and weekdays")
 ```
 
 *Yes much difference, seem lazier at weekends*
