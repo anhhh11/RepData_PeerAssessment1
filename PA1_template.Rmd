@@ -1,20 +1,137 @@
 # Reproducible Research: Peer Assessment 1
 
+## Loading library
+```{r}
+library(data.table)
+library(fasttime)
+library(ggplot2)
+library(gridExtra)
+```
+
+## Getting data
+```{r}
+if (!file.exists('activity.csv')) unzip("activity.zip")
+```
 
 ## Loading and preprocessing the data
+```{r}
+testData <- fread("activity.csv",nrows=1000)
+summary(testData)
+head(testData)
+testData$date <- fasttime::fastPOSIXct(testData$date)
+summary(testData$date)
 
+data <- fread("activity.csv")
+data$date <- fasttime::fastPOSIXct(data$date)
+summary(data)
+orgData <- data
+data <- na.omit(data) #Ommited missing value
+```
 
 
 ## What is mean total number of steps taken per day?
+### A histogram of the total number of steps taken each day
+```{r}
+obsGroupByPerDay = orgData[,list(total_steps=sum(steps)),by=date] #NEED: V1 column name -> MeanOfSteps
+p <- ggplot(data=obsGroupByPerDay) + geom_histogram(aes(x=total_steps,fill=..count..)) +
+  xlab("Steps")
+print(p)
+```
 
+### The mean total number of steps taken per day
+```{r}
+meanStepsPerDay = orgData[,mean(steps),by=date]
+meanStepsPerDay
+```
 
+### The median total number of steps taken per day
+```{r}
+medianStepsPerDay = data[,median(steps,na.rm=T),by=date]
+medianStepsPerDay
+```
 
 ## What is the average daily activity pattern?
+### A time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+meanStepByInterval = data[,mean(steps),by=interval]
+ggplot(data=meanStepByInterval) + geom_line(aes(x=interval,y=V1)) + ylab("mean of steps")
+```
 
-
+### 5-minute interval contains the maximum number of steps
+```{r}
+meanStepByInterval$interval[which.max(meanStepByInterval$V1)]
+835/60 # At 2pm
+```
 
 ## Imputing missing values
+### the total number of missing values
+#### Per day
+```{r,missingValuesPerDay}
+orgData[,list(count=sum(is.na(steps))),by=date][count>0]
+```
+#### All day
+```{r,missingValuesAllDay}
+summary(orgData) # 2304
+```
 
+### Filling in all of the missing values in the dataset
+#### Filling missing intervals in a day
+*Strategy: Use steps' mean of a day to fill missing values of step that day*
+```{r}
+fillMissingIntervalInADayData = orgData
+naPostition = which(is.na(fillMissingIntervalInADayData$steps))
+naFilled = merge(fillMissingIntervalInADayData[naPostition,list(date)],medianStepsPerDay,by="date",all.x=TRUE) #Merge with median per day
+fillMissingIntervalInADayData$steps[naPostition] = naFilled$V1
+summary(fillMissingIntervalInADayData) # 2304
+```
 
+#### Filling a day which have missing intervals
+*Strategy: Use mean of steps group by intervals to fill missing values of steps belong to the intervals*
+```{r}
+#Duplicate data
+fillADayMissingInvervals = fillMissingIntervalInADayData
+#Find NA row position
+naPostition = which(is.na(fillADayMissingInvervals$steps))
+#Filled NA by interval
+naFilledValues = merge(fillADayMissingInvervals[naPostition,list(interval)],meanStepByInterval,by="interval",all.x=TRUE)
+#Assign back
+fillADayMissingInvervals$steps[naPostition] = naFilledValues$V1
+summary(fillADayMissingInvervals)
+```
+### A new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+filledData = fillADayMissingInvervals
+```
+
+### Compare before and after filling missing values
+```{r,compareBetweenBeforeAndAfterFilling}
+totalStepEachDay = filledData[,list(total_steps=sum(steps)),by=date]
+before = ggplot(data=obsGroupByPerDay) + 
+  geom_histogram(aes(x=total_steps,fill=..count..),binwidth=500) + 
+  ggtitle("Before filling")
+after = ggplot(data=totalStepEachDay) + 
+  geom_histogram(aes(total_steps,fill=..count..),binwidth=500) + 
+  ggtitle("After filling")
+grid.arrange(before,after)
+```
+
+*Don't see much difference here*
 
 ## Are there differences in activity patterns between weekdays and weekends?
+1. Create dayTypes variable indicate day as weekends or weekdays
+```{r}
+filledData$dayTypes = as.factor(filledData[,grepl("Sunday|Staturday",weekdays(date))])
+levels(filledData$dayTypes) <- c("weekdays","weekends")
+
+```
+2. Make panel plot show number of steps for each interval split by dayTypes
+```{r}
+filledDataSumStepByDayTypesAndInterval = filledData[,list(sum=sum(steps)),by=list(dayTypes,interval)]
+ggplot(data=filledDataSumStepByDayTypesAndInterval) +
+  geom_line(aes(x=interval,y=sum)) +
+  facet_grid(dayTypes ~ . ) +
+  theme(strip.text.y = element_text(size = 20)) +
+  ylab("Number of steps")
+```
+
+*Yes much difference, seem lazier at weekends*
